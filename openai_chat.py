@@ -62,6 +62,7 @@ def token_num_return(msg_arr):
     total_len += len(enc.encode(str(item)))
   return total_len
 
+WINDOWS = False
 # for screen clears
 if platform == "linux" or platform == "linux2":
     CLEAR = 'clear'
@@ -69,6 +70,7 @@ elif platform == "darwin":
     CLEAR = 'clear'
 elif platform == "win32":
     CLEAR = 'cls'
+    WINDOWS = True
 else:
     CLEAR = 'clear'
 
@@ -239,7 +241,10 @@ while True:
     print_dialogue(header, msg_arr, msg_start,tokens)
     if prev_msg['role'] != 'user':
       raise Exception("RETRY ERROR. Run again to resolve.")
-    msg = rlinput("U: ",prev_msg['content'])
+    if WINDOWS:
+      msg = rlinput("U: ",prev_msg['content'])
+    else:
+      msg = rlinput("",prev_msg['content'])
     retry_input = False
   else :
     print_dialogue(header, msg_arr, msg_start,tokens)
