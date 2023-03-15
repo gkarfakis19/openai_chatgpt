@@ -1,9 +1,4 @@
-do this:
+"pip install -r reqs.txt"
 
-"pip install openai"
-
-and then just run openai_chat_export_ver.py on vs code or through a terminal. it should work.
-
-Additional reqs (optional):
-'pip install tiktoken'
-'pip install pyautogui'
+Also don't forget to insert your api key in api_key.sample.txt, and rename the file to api_key.txt.
+For more information, try to run the file without an API key.
