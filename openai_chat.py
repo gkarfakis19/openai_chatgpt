@@ -80,7 +80,7 @@ try:
       if line.find(' ') != -1:
         openai.api_key = line[:line.find(' ')]
       else:
-        opeanai.api_key = line
+        openai.api_key = line[:-1]
       break
 except FileNotFoundError:
   openai.api_key = None
