@@ -4,6 +4,7 @@ import traceback
 import sys
 import datetime
 import json
+import importlib
 
 from sys import platform
 
@@ -91,31 +92,36 @@ def log_err(data):
     f.write(str(data))
     f.write('\n')
 
-PYAUTOGUI = True
-try:
-  from pyautogui import typewrite
-except ImportError:
-  print("WARNING:: pyautogui was not found. System will revert to reduced editing functionality.")
-  print("WARNING:: to resolve, do 'pip install pyautogui'")
-  input("Press ENTER to accept this warning and continue.")
-  log_err("Pyautogui not found. Reduced functionality.")
-  PYAUTOGUI = False
+dependancies={
+  "pyautogui": True,
+  "tiktoken": True,
+  "halo": True
+}
+
+def import_and_check(lib):
+  try:
+    # this is essentially 'import str(lib)'
+    globals()[str(lib)] = importlib.import_module(lib)
+  except ImportError:
+    print("WARNING:: "+str(lib)+" was not found. Program will still run (hopefully) but with reduced functionality.")
+    print("WARNING:: to resolve, do 'pip install "+str(lib)+"'")
+    input("Press ENTER to accept this warning and continue.")
+    log_err(str(lib)+" not found. Reduced functionality.")
+    dependancies[str(lib)] = False
+
+import_and_check("pyautogui")
+
+import_and_check("tiktoken")
+if dependancies['tiktoken']:
+  enc = tiktoken.encoding_for_model("gpt-3.5-turbo")
+
+import_and_check("halo")
+
 
 def rlinput(prompt, prefill=''):
-  typewrite(prefill)
+  pyautogui.typewrite(prefill)
   msg = input(prompt)
   return msg
-
-TIKTOKEN = True
-try:
-  import tiktoken
-  enc = tiktoken.encoding_for_model("gpt-3.5-turbo")
-except ImportError:
-  print("WARNING:: tiktoken was not found. System will revert to reduced long message and token resolution functionality.")
-  print("WARNING:: to resolve, do 'pip install tiktoken'")
-  input("Press ENTER to accept this warning and continue.")
-  log_err("Tiktoken not found. Reduced functionality.")
-  TIKTOKEN = False
 
 def token_num_return(msg_arr):
   total_len = 0
@@ -150,20 +156,38 @@ if openai.api_key == "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" or op
   raise Exception("You need to enter your API key in a file api_key.txt to run this. Go to https://platform.openai.com/account/api-keys to find yours.")
 
 
+
 MAX_TOKENS = 4096
-def send_msg(msg):
-  if TIKTOKEN:
-    length = token_num_return(msg)
-  else:
-    length = 1
-  if length > MAX_TOKENS:
-    return -1, None
-  response = openai.ChatCompletion.create(
-    model="gpt-3.5-turbo",
-    messages= msg,
-    temperature = 1
-  )
-  return 0, response
+
+if dependancies['halo']:
+  @halo.Halo(text='')
+  def send_msg(msg):
+    if dependancies["tiktoken"]:
+      length = token_num_return(msg)
+    else:
+      length = 1
+    if length > MAX_TOKENS:
+      return -1, None
+    response = openai.ChatCompletion.create(
+      model="gpt-3.5-turbo",
+      messages= msg,
+      temperature = 1
+    )
+    return 0, response
+else:
+  def send_msg(msg):
+    if dependancies["tiktoken"]:
+      length = token_num_return(msg)
+    else:
+      length = 1
+    if length > MAX_TOKENS:
+      return -1, None
+    response = openai.ChatCompletion.create(
+      model="gpt-3.5-turbo",
+      messages= msg,
+      temperature = 1
+    )
+    return 0, response
 
 def prune_msg(msg_arr):
   while token_num_return(msg_arr) > MAX_TOKENS:
@@ -216,7 +240,7 @@ def graceful_exit_handler(tokens,msg_arr):
   print("INFO:: Open a new chat, and type '=S Recovered_CONVO' to regenerate it.")
 
 ### Change this line to use different presets to bias chatGPT.
-msg_arr = load_preset_from_json("msg_preset_danger")
+msg_arr = load_preset_from_json("msg_preset_default")
 ### msg_preset_default gives same answers as ChatGPT.
 ### msg_preset1 is jailbroken with a weird prompt I found online about AI superbirds. It works but is weird (and expensive).
 ### msg_preset2 is jailbroken with a hackerman prompt. It works but is weaker than the superbird one.
@@ -270,7 +294,7 @@ while True:
       msg_arr.pop()
     else:
       msg_arr.pop()
-    if PYAUTOGUI:
+    if dependancies["pyautogui"]:
       retry_input = True
       continue
   elif "=S" in msg:
@@ -328,7 +352,7 @@ while True:
     break
   response_txt = response['choices'][0]['message']['content']
   msg_arr.append({"role": "assistant", "content": response_txt})
-  if not TIKTOKEN:
+  if not dependancies["tiktoken"]:
     tokens = response['usage']['total_tokens']
   else:
     tokens = token_num_return(msg_arr)
