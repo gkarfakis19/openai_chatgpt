@@ -8,6 +8,11 @@ import importlib
 
 from sys import platform
 
+STREAM = True
+# You should keep STREAM = True for streaming functionality
+# However, it may affect the maximum token limit counter functionality.
+# If you're getting errors, turn it off.
+
 convo_fp = "convos"
 json_fp = "presets"
 
@@ -171,7 +176,8 @@ if dependancies['halo']:
     response = openai.ChatCompletion.create(
       model="gpt-3.5-turbo",
       messages= msg,
-      temperature = 1
+      temperature = 1,
+      stream = STREAM
     )
     return 0, response
 else:
@@ -185,9 +191,21 @@ else:
     response = openai.ChatCompletion.create(
       model="gpt-3.5-turbo",
       messages= msg,
-      temperature = 1
+      temperature = 1,
+      stream = STREAM
     )
     return 0, response
+
+def handle_stream_resp(response):
+    print("A: ",end='')
+    partial_new_msg = []
+    for chunk in response:
+      chunk_message = chunk['choices'][0]['delta']
+      partial_new_msg.append(chunk_message)  
+      partial_new_content = chunk_message.get('content', '')
+      print(partial_new_content,end='')
+    full_reply_content = ''.join([m.get('content', '') for m in partial_new_msg])
+    return full_reply_content
 
 def prune_msg(msg_arr):
   while token_num_return(msg_arr) > MAX_TOKENS:
@@ -344,13 +362,17 @@ while True:
       prune_msg_required = True
       msg_arr = prune_msg(msg_arr)
       code, response = send_msg(msg_arr)
+    if STREAM:
+      response_txt = handle_stream_resp(response)
+    else:
+      response_txt = response['choices'][0]['message']['content']
   except Exception:
     exception_msg = traceback.format_exc()
     print(exception_msg)
     if (tokens > 0 and not expected_break):
       graceful_exit_handler(tokens, msg_arr)
     break
-  response_txt = response['choices'][0]['message']['content']
+  # response_txt = response['choices'][0]['message']['content']
   msg_arr.append({"role": "assistant", "content": response_txt})
   if not dependancies["tiktoken"]:
     tokens = response['usage']['total_tokens']
