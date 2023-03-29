@@ -10,7 +10,7 @@ from enum import Enum
 from sys import platform
 
 if __name__ == "__main__":
-    print("ERROR:: Model not selected. Do not call openai_core.py directly, call openai_chat-XXX.py instead.")
+    print("ERROR:: Model not selected. Do not call openai_core.py directly, call openai_chat_GPTXXX.py instead.")
     sys.exit()
 
 def call_core(model_tuple, STREAM = True):
@@ -26,8 +26,7 @@ def call_core(model_tuple, STREAM = True):
         GPT_4_32K = 3
 
     model, MAX_TOKENS, usd_per_1k_tokens = model_tuple
-    # model_select = Model.GPT_3
-
+    
     temp = 1.0
 
     convo_fp = "convos"
@@ -174,7 +173,8 @@ def call_core(model_tuple, STREAM = True):
         openai.api_key = None
 
     if openai.api_key == "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" or openai.api_key == None:
-        raise Exception("You need to enter your API key in a file api_key.txt to run this. Go to https://platform.openai.com/account/api-keys to find yours.")
+        current_pwd = os.getcwd()
+        raise Exception("Current folder: '"+str(current_pwd)+ "'. You need to enter your API key in a file api_key.txt in this folder to run this. Go to https://platform.openai.com/account/api-keys to find yours.")
 
 
     if dependancies['halo']:
