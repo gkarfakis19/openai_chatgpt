@@ -246,13 +246,17 @@ def call_core(model_tuple, STREAM = True):
             header_addon = "WARNING: MESSAGE HAS BEEN PRUNED, SINCE IT WAS TOO LONG. TOKEN/COST NO LONGER ACCURATE.\n"
         else:
             header_addon = ""
-        header = header_addon + "RUNNING: " +  model + f". COMMANDS: \n\
-        '=D' TO DELETE PREV MSG. '=R' TO RETRY RESPONSE. '=E' TO EXIT. \n\
-        '=S $NAME' TO SAVE CONV IN TXT. '=L $NAME' TO LOAD CONV FROM TXT. \n\
-        '=C' TO CLEAR CHAT (ONLY SEE LATEST RESPONSES). '=CC' TO UNCLEAR IT. \n\
-        '=T $TEMP' TO SET GPT TEMPERATURE, '=!LONG' TO INSERT LONG MESSAGE. \n\
-        CURRENT TOKENS = {tokens} (~${cost}). CURRENT TEMP = {temp}."
+        header = header_addon + "RUNNING: " +  model + f". '=M' FOR LIST OF COMMANDS \n\
+CURRENT TOKENS = {tokens} (~${cost}). CURRENT TEMP = {temp}."
         return header
+
+    def print_man():
+        man_string = "'=D' TO DELETE PREV MSG. '=R' TO RETRY RESPONSE. '=E' TO EXIT. \n\
+'=S $NAME' TO SAVE CONV IN TXT. '=L $NAME' TO LOAD CONV FROM TXT. \n\
+'=C' TO CLEAR CHAT (ONLY SEE LATEST RESPONSES). '=CC' TO UNCLEAR IT. \n\
+'=T $TEMP' TO SET GPT TEMPERATURE, '=!LONG' TO INSERT LONG MESSAGE. \n"
+        print(man_string)
+        input("PRESS ENTER TO CONTINUE...")
 
     def save_convo_to_file(fname,msg_arr):
         with open(convo_fp+"/"+fname+".txt",'w',encoding="utf-8") as f:
@@ -346,6 +350,9 @@ def call_core(model_tuple, STREAM = True):
             msg_arr = []
             msg_start = 1
             load_convo_from_file(msg[msg.find(" ")+1:])
+            continue
+        elif msg == "=M":
+            print_man()
             continue
         elif msg == "=E":
             expected_break = True
