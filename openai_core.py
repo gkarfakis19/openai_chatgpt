@@ -124,7 +124,7 @@ def call_core(model_tuple, STREAM = True):
             globals()[str(lib)] = importlib.import_module(lib)
         except ImportError:
             print("WARNING:: "+str(lib)+" was not found. Program will still run (hopefully) but with reduced functionality.")
-            print("WARNING:: to resolve, do 'pip install "+str(lib)+"'")
+            print("WARNING:: to resolve, do 'pip install "+str(lib)+"', 'or pip install -r reqs.txt'")
             input("Press ENTER to accept this warning and continue.")
             log_err(str(lib)+" not found. Reduced functionality.")
             dependancies[str(lib)] = False
@@ -178,7 +178,7 @@ def call_core(model_tuple, STREAM = True):
 
 
     if dependancies['halo']:
-        @halo.Halo(text='')
+        @halo.Halo(text='',spinner='dots')
         def send_msg(msg):
             if dependancies["tiktoken"]:
                 length = token_num_return(msg)
@@ -186,12 +186,22 @@ def call_core(model_tuple, STREAM = True):
                 length = 1
             if length > MAX_TOKENS:
                 return -1, None
-            response = openai.ChatCompletion.create(
-                model=model,
-                messages= msg,
-                temperature = temp,
-                stream = STREAM
-            )
+            try:
+                response = openai.ChatCompletion.create(
+                    model=model,
+                    messages= msg,
+                    temperature = temp,
+                    stream = STREAM
+                    )
+            except Exception:
+                # capture exception msg as a string in a variable
+                error_string = traceback.format_exc()
+                log_err("OpenAI API error.")
+                if "The model:" in error_string and "does not exist" in error_string:
+                    print(error_string)
+                    print("OpenAI API error. You may not have access to the model you were trying to use.")
+                    input("Press ENTER to acknowledge this error.")
+                sys.exit()
             return 0, response
     else:
         def send_msg(msg):
@@ -201,12 +211,21 @@ def call_core(model_tuple, STREAM = True):
                 length = 1
             if length > MAX_TOKENS:
                 return -1, None
-            response = openai.ChatCompletion.create(
-                model=model,
-                messages= msg,
-                temperature = temp,
-                stream = STREAM
-                )
+            try:
+                response = openai.ChatCompletion.create(
+                    model=model,
+                    messages= msg,
+                    temperature = temp,
+                    stream = STREAM
+                    )
+            except Exception:
+                # capture exception msg as a string in a variable
+                error_string = traceback.format_exc()
+                log_err("OpenAI API error.")
+                if "The model:" in error_string and "doe not exist" in error_string:
+                    print(error_string)
+                    print("OpenAI API error. You may not have access to the model you were trying to use.")
+                sys.exit()
             return 0, response
 
     def handle_stream_resp(response):
