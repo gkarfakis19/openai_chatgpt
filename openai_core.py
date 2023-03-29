@@ -105,19 +105,15 @@ def call_core(model_tuple, STREAM = True):
             f.write(str(data))
             f.write('\n')
 
-    dependancies={
-        "pyautogui": True,
-        "tiktoken": True,
-        "halo": True
-    }
-
+    dependancies = {}
     def import_and_check(lib):
         try:
             # this is essentially 'import str(lib)'
             globals()[str(lib)] = importlib.import_module(lib)
+            dependancies[str(lib)] = True	
         except ImportError:
             print("WARNING:: "+str(lib)+" was not found. Program will still run (hopefully) but with reduced functionality.")
-            print("WARNING:: to resolve, do 'pip install "+str(lib)+"', 'or pip install -r reqs.txt'")
+            print("WARNING:: to resolve, do 'pip install "+str(lib)+"', or 'pip install -r reqs.txt'")
             input("Press ENTER to accept this warning and continue.")
             log_err(str(lib)+" not found. Reduced functionality.")
             dependancies[str(lib)] = False
@@ -252,14 +248,14 @@ def call_core(model_tuple, STREAM = True):
                     print("S: ",end='')
                 print(item['content'])
 
-    def gen_header(prune_msg,tokens):
+    def gen_header(prune_msg,curr_tokens,tokens):
         cost = round(tokens*usd_per_1k_tokens/1000,4)
         if prune_msg:
             header_addon = "WARNING: MESSAGE HAS BEEN PRUNED, SINCE IT WAS TOO LONG. TOKEN/COST NO LONGER ACCURATE.\n"
         else:
             header_addon = ""
         header = header_addon + "RUNNING: " +  model + f". '=M' FOR LIST OF COMMANDS \n\
-CURRENT TOKENS = {tokens} (~${cost}). CURRENT TEMP = {temp}."
+TOKENS (LAST_MSG|TOTAL) = ({curr_tokens}|{tokens}) (TOTAL: ~${cost}). CURRENT TEMP = {temp}."
         return header
 
     def print_man():
@@ -314,9 +310,10 @@ CURRENT TOKENS = {tokens} (~${cost}). CURRENT TEMP = {temp}."
     long_input = False
     retry_input = False
     tokens = 0
+    curr_tokens = 0
     prune_msg_required = False
     while True:
-        header = gen_header(prune_msg_required, tokens)
+        header = gen_header(prune_msg_required, curr_tokens, tokens)
         if long_input:
             print_dialogue(header, msg_arr, msg_start,tokens)
             print("..LONG INPUT.. (press CTRL+D (Unix) or CTRL+Z+ENTER (Win) to stop.)")
@@ -327,14 +324,14 @@ CURRENT TOKENS = {tokens} (~${cost}). CURRENT TEMP = {temp}."
         elif retry_input:
             prev_msg = msg_arr[-1]
             msg_arr.pop()
-            print_dialogue(header, msg_arr, msg_start,tokens)
+            print_dialogue(header, msg_arr, msg_start, tokens)
             if prev_msg['role'] != 'user':
-                raise Exception("RETRY ERROR. Run again to resolve.")
+                raise Exception("RETRY ERROR. This should not happen. Report this to the dev.")
             if WINDOWS:
                 msg = rlinput("U: ",prev_msg['content'])
             else:
                 msg = rlinput("",prev_msg['content'])
-                retry_input = False
+            retry_input = False
         else :
             print_dialogue(header, msg_arr, msg_start,tokens)
             msg = input("U: ")
@@ -420,8 +417,9 @@ CURRENT TOKENS = {tokens} (~${cost}). CURRENT TEMP = {temp}."
         # response_txt = response['choices'][0]['message']['content']
         msg_arr.append({"role": "assistant", "content": response_txt})
         if not dependancies["tiktoken"]:
-            tokens = response['usage']['total_tokens']
+            curr_tokens = response['usage']['total_tokens']
         else:
-            tokens = token_num_return(msg_arr)
-        log_err("Message sent. Tokens: ("+str(tokens)+"/"+str(MAX_TOKENS)+")")
+            curr_tokens = token_num_return(msg_arr)
+        tokens += curr_tokens
+        log_err("Message sent. Tokens: ("+str(curr_tokens)+"/"+str(MAX_TOKENS)+")")
         long_input = False
