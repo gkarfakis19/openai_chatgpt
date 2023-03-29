@@ -5,6 +5,7 @@ import sys
 import datetime
 import json
 import importlib
+from enum import Enum
 
 from sys import platform
 
@@ -13,9 +14,30 @@ STREAM = True
 # However, it may affect the maximum token limit counter functionality.
 # If you're getting errors, turn it off.
 
-model = 'gpt-3.5-turbo'
-temp = 1.0
+# make an enum that includes the following options: GPT-3, and GPT-4
+class Model(Enum):
+  GPT_3 = 1
+  GPT_4_8K = 2
+  GPT_4_32K = 3
 
+model_select = Model.GPT_3
+
+if model_select == Model.GPT_4_8K:
+  model = 'gpt-4'
+  MAX_TOKENS = 8096
+  usd_per_1k_tokens = 0.03
+elif model_select == Model.GPT_4_32K:
+  model = 'gpt-4-32k'
+  MAX_TOKENS = 32768
+  usd_per_1k_tokens = 0.06
+else:
+  model = 'gpt-3.5-turbo'
+  MAX_TOKENS = 4096
+  # from openAI website here: https://openai.com/pricing
+  usd_per_1k_tokens = 0.002
+
+
+temp = 1.0
 
 convo_fp = "convos"
 json_fp = "presets"
@@ -122,7 +144,7 @@ import_and_check("pyautogui")
 
 import_and_check("tiktoken")
 if dependancies['tiktoken']:
-  enc = tiktoken.encoding_for_model(model)
+  enc = tiktoken.get_encoding("cl100k_base")
 
 import_and_check("halo")
 
@@ -164,9 +186,6 @@ except FileNotFoundError:
 if openai.api_key == "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" or openai.api_key == None:
   raise Exception("You need to enter your API key in a file api_key.txt to run this. Go to https://platform.openai.com/account/api-keys to find yours.")
 
-
-
-MAX_TOKENS = 4096
 
 if dependancies['halo']:
   @halo.Halo(text='')
@@ -217,8 +236,6 @@ def prune_msg(msg_arr):
   return msg_arr
 
 tokens = 0
-# from openAI website here: https://openai.com/pricing
-usd_per_1k_tokens = 0.002
 
 def print_dialogue(header,msg_arr,msg_start,tokens):
   os.system(CLEAR)
@@ -239,7 +256,7 @@ def gen_header(prune_msg,tokens):
     header_addon = "WARNING: MESSAGE HAS BEEN PRUNED, SINCE IT WAS TOO LONG. TOKEN/COST NO LONGER ACCURATE.\n"
   else:
     header_addon = ""
-  header = header_addon + f"COMMANDS: \n\
+  header = header_addon + "RUNNING: " +  model_select.name + f". COMMANDS: \n\
   '=D' TO DELETE PREV MSG. '=R' TO RETRY RESPONSE. '=E' TO EXIT. \n\
   '=S $NAME' TO SAVE CONV IN TXT. '=L $NAME' TO LOAD CONV FROM TXT. \n\
   '=C' TO CLEAR CHAT (ONLY SEE LATEST RESPONSES). '=CC' TO UNCLEAR IT. \n\
