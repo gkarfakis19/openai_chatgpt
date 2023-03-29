@@ -14,16 +14,9 @@ if __name__ == "__main__":
     sys.exit()
 
 def call_core(model_tuple, STREAM = True):
-    STREAM = True
     # You should keep STREAM = True for streaming functionality
     # However, it may affect the maximum token limit counter functionality.
     # If you're getting errors, turn it off.
-
-    # make an enum that includes the following options: GPT-3, and GPT-4
-    class Model(Enum):
-        GPT_3 = 1
-        GPT_4_8K = 2
-        GPT_4_32K = 3
 
     model, MAX_TOKENS, usd_per_1k_tokens = model_tuple
     
