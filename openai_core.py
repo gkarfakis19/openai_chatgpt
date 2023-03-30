@@ -165,15 +165,21 @@ def call_core(model_tuple, STREAM = True):
         current_pwd = os.getcwd()
         raise Exception("Current folder: '"+str(current_pwd)+ "'. You need to enter your API key in a file api_key.txt in this folder to run this. Go to https://platform.openai.com/account/api-keys to find yours.")
 
+    def check_len(msg):
+        if dependancies["tiktoken"]:
+            length = token_num_return(msg)
+        else:
+            print("UUUU")
+            length = 1
+        if length > MAX_TOKENS:
+            print("MAX REACH")
+            return -1
+        return 0
 
     if dependancies['halo']:
         @halo.Halo(text='',spinner='dots')
         def send_msg(msg):
-            if dependancies["tiktoken"]:
-                length = token_num_return(msg)
-            else:
-                length = 1
-            if length > MAX_TOKENS:
+            if check_len(msg) == -1:
                 return -1, None
             try:
                 response = openai.ChatCompletion.create(
@@ -194,11 +200,7 @@ def call_core(model_tuple, STREAM = True):
             return 0, response
     else:
         def send_msg(msg):
-            if dependancies["tiktoken"]:
-                length = token_num_return(msg)
-            else:
-                length = 1
-            if length > MAX_TOKENS:
+            if check_len(msg) == -1:
                 return -1, None
             try:
                 response = openai.ChatCompletion.create(
@@ -254,11 +256,12 @@ def call_core(model_tuple, STREAM = True):
             header_addon = "WARNING: MESSAGE HAS BEEN PRUNED, SINCE IT WAS TOO LONG. TOKEN/COST NO LONGER ACCURATE.\n"
         else:
             header_addon = ""
-        header = header_addon + "RUNNING: " +  model + f". '=M' FOR LIST OF COMMANDS \n\
-TOKENS (LAST_MSG|TOTAL) = ({curr_tokens}|{tokens}) (TOTAL: ~${cost}). CURRENT TEMP = {temp}."
+        header = header_addon + "RUNNING: " +  model + f". STREAM = {STREAM}. '=M' FOR LIST OF COMMANDS \n\
+TOKENS (LAST_MSG/MAX) = ({curr_tokens}/{MAX_TOKENS}). TOTAL TOKENS = {tokens} (~${cost}). CURRENT TEMP = {temp}."
         return header
 
     def print_man():
+        os.system(CLEAR)
         man_string = "'=D' TO DELETE PREV MSG. '=R' TO RETRY RESPONSE. '=E' TO EXIT. \n\
 '=S $NAME' TO SAVE CONV IN TXT. '=L $NAME' TO LOAD CONV FROM TXT. \n\
 '=C' TO CLEAR CHAT (ONLY SEE LATEST RESPONSES). '=CC' TO UNCLEAR IT. \n\
@@ -329,7 +332,7 @@ TOKENS (LAST_MSG|TOTAL) = ({curr_tokens}|{tokens}) (TOTAL: ~${cost}). CURRENT TE
                 raise Exception("RETRY ERROR. This should not happen. Report this to the dev.")
             if WINDOWS:
                 msg = rlinput("U: ",prev_msg['content'])
-            else:
+            else: # macos has weird bug with console that makes it show the U after the message. Do not display anything there.
                 msg = rlinput("",prev_msg['content'])
             retry_input = False
         else :
@@ -406,6 +409,12 @@ TOKENS (LAST_MSG|TOTAL) = ({curr_tokens}|{tokens}) (TOTAL: ~${cost}). CURRENT TE
                 code, response = send_msg(msg_arr)
             if STREAM:
                 response_txt = handle_stream_resp(response)
+                if check_len(msg_arr) == -1:
+                    print("WARNING:: Token limit reached. System will now begin forgetting previous responses to fit.")
+                    input("Press ENTER to accept this warning and continue.")
+                    log_err("Message overflow. Pruning..")
+                    prune_msg_required = True
+                msg_arr = prune_msg(msg_arr)
             else:
                 response_txt = response['choices'][0]['message']['content']
         except Exception:
