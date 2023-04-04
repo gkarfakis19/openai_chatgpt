@@ -255,7 +255,7 @@ def call_core(model_tuple, STREAM = True, CONST_SAVE = True):
         os.system(CLEAR)
         print(header)
         if warn:
-            print_colour("WARNING: MESSAGE HAS BEEN PRUNED, SINCE IT WAS TOO LONG. TOKEN/COST NO LONGER ACCURATE.",bcolors.WARNING)
+            print_colour("WARNING:: EDITING MULTILINE REPLY. PRESSING ENTER WILL GO TO NEXT LINE.",bcolors.WARNING)
         for i,item in enumerate(msg_arr):
             if i > msg_start-1:
                 if (item['role'] == 'user'):
