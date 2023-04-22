@@ -24,7 +24,8 @@ def print_colour(msg,colour):
     print(colour+msg+bcolors.ENDC)
 
 def input_colour(msg,colour):
-    return input(colour+msg+bcolors.ENDC)
+    print_colour(msg,colour)
+    return input()
 
 if __name__ == "__main__":
     print_colour("ERROR:: Model not selected. Do not call openai_core.py directly, call openai_chat_GPTXXX.py instead.",bcolors.FAIL)
@@ -130,7 +131,7 @@ def call_core(model_tuple, STREAM = True, CONST_SAVE = True):
         except ImportError:
             print_colour("WARNING:: "+str(lib)+" was not found. Program will still run (hopefully) but with reduced functionality.",bcolors.WARNING)
             print_colour("WARNING:: to resolve, do 'pip install "+str(lib)+"', or 'pip install -r reqs.txt'",bcolors.WARNING)
-            input_colour("Press ENTER to accept this warning and continue.",bcolors.BOLD)
+            input_colour("Press ENTER to accept this warning and continue.",bcolors.WARNING)
             log_err(str(lib)+" not found. Reduced functionality.")
             dependancies[str(lib)] = False
 
@@ -197,19 +198,23 @@ def call_core(model_tuple, STREAM = True, CONST_SAVE = True):
                 return -1, None
             try:
                 response = openai.ChatCompletion.create(
-                    model=model,
-                    messages= msg,
+                    model = model,
+                    messages = msg,
                     temperature = temp,
                     stream = STREAM
-                    )
-            except Exception:
+                )
+            except:
                 # capture exception msg as a string in a variable
                 error_string = traceback.format_exc()
                 log_err("OpenAI API error.")
                 if "The model:" in error_string and "does not exist" in error_string:
                     print(error_string)
                     print_colour("OpenAI API error. You may not have access to the model you were trying to use.",bcolors.FAIL)
-                    input_colour("Press ENTER to acknowledge this error.",bcolors.BOLD)
+                    input_colour("Press ENTER to acknowledge this error and exit.",bcolors.FAIL + bcolors.BOLD)
+                else:
+                    print(error_string)
+                    print_colour("^^^ OpenAI API error (read above).",bcolors.FAIL)
+                    input_colour("Press ENTER to acknowledge this error and exit.",bcolors.FAIL + bcolors.BOLD)
                 sys.exit()
             return 0, response
     else:
@@ -280,7 +285,7 @@ TOKENS (LAST_MSG/MAX) = ({curr_tokens}/{MAX_TOKENS}). TOTAL TOKENS = {tokens} (~
         os.system(CLEAR)
         man_string = "'=D' TO DELETE PREV MSG. '=R' TO RETRY RESPONSE. '=E' TO EXIT. \n\
 '=S $NAME' TO SAVE CONV IN TXT. '=L $NAME' TO LOAD CONV FROM TXT. \n\
-'=C' TO CLEAR CHAT (ONLY SEE LATEST RESPONSES). '=CC' TO UNCLEAR IT. \n\
+'=C' TO CLEAR CHAT (ONLY SEE LATEST RESPONSES). '=CC' TO UNCLEAR IT (BUGGY).\n\
 '=T $TEMP' TO SET GPT TEMPERATURE, '=!LONG' TO INSERT LONG MESSAGE. \n"
         print(man_string)
         input_colour("PRESS ENTER TO CONTINUE...",bcolors.BOLD)
@@ -309,8 +314,8 @@ TOKENS (LAST_MSG/MAX) = ({curr_tokens}/{MAX_TOKENS}). TOTAL TOKENS = {tokens} (~
         if msg_arr[-1]['role'] == "user":
             msg_arr.pop()
         save_convo_to_file(name,msg_arr)  
-        print("INFO:: The Chat API has crashed for some reason. Worry not, your current conversation has been saved as 'Recovered_CONVO.txt'.")
-        print("INFO:: Open a new chat, and type '=S Recovered_CONVO' to regenerate it.")
+        print_colour("INFO:: The Chat API has crashed for some reason. Worry not, your current conversation has been saved as 'Recovered_CONVO.txt'.",bcolors.BOLD)
+        print_colour("INFO:: Open a new chat, and type '=L Recovered_CONVO' to reload it.",bcolors.BOLD)
 
     ### Change this line to use different presets to bias chatGPT.
     msg_arr = load_preset_from_json("msg_preset_default")
@@ -414,7 +419,7 @@ TOKENS (LAST_MSG/MAX) = ({curr_tokens}/{MAX_TOKENS}). TOTAL TOKENS = {tokens} (~
             except Exception:
                 print_colour("WARNING:: Invalid temperature provided. Correct syntax: '=T $TEMP', where $TEMP is a float between 0.0 and 1.0.",bcolors.WARNING)
                 log_err("WARNING:: Invalid temperature provided.")
-                input_colour("PRESS ENTER TO CONTINUE...",bcolors.BOLD)
+                input_colour("PRESS ENTER TO CONTINUE...",bcolors.WARNING)
             continue
         # PRIO functionality is still included but is useless. GPT doesn't place much emphasis on these system messages.
         elif msg == "=!PRIO":
@@ -445,7 +450,7 @@ TOKENS (LAST_MSG/MAX) = ({curr_tokens}/{MAX_TOKENS}). TOTAL TOKENS = {tokens} (~
                     msg_arr = prune_msg(msg_arr)
             else:
                 response_txt = response['choices'][0]['message']['content']
-        except Exception:
+        except:
             exception_msg = traceback.format_exc()
             print(exception_msg)
             if (tokens > 0 and not expected_break):
