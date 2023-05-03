@@ -6,6 +6,7 @@ import datetime
 import json
 import importlib
 from enum import Enum
+import re
 
 from sys import platform
 
@@ -142,7 +143,7 @@ def call_core(model_tuple, STREAM = True, CONST_SAVE = True):
         enc = tiktoken.get_encoding("cl100k_base")
 
     import_and_check("halo")
-
+    import_and_check("pyperclip")
 
     def rlinput(prompt, prefill=''):
         pyautogui.typewrite(prefill)
@@ -274,7 +275,7 @@ def call_core(model_tuple, STREAM = True, CONST_SAVE = True):
     def gen_header(prune_msg,curr_tokens,tokens):
         cost = round(tokens*usd_per_1k_tokens/1000,4)
         if prune_msg:
-            header_addon = bcolors.WARNING+"WARNING: MESSAGE HAS BEEN PRUNED, SINCE IT WAS TOO LONG. TOKEN/COST NO LONGER ACCURATE."+bcolors.ENDC+"\n"
+            header_addon = bcolors.WARNING+"WARNING: MESSAGE HAS BEEN PRUNED, SINCE IT WAS TOO LONG."+bcolors.ENDC+"\n"
         else:
             header_addon = ""
         header = header_addon + "RUNNING: " +  model + f". STREAM = {STREAM}. '=M' FOR LIST OF COMMANDS \n\
@@ -284,9 +285,9 @@ TOKENS (LAST_MSG/MAX) = ({curr_tokens}/{MAX_TOKENS}). TOTAL TOKENS = {tokens} (~
     def print_man():
         os.system(CLEAR)
         man_string = "'=D' TO DELETE PREV MSG. '=R' TO RETRY RESPONSE. '=E' TO EXIT. \n\
-'=S $NAME' TO SAVE CONV IN TXT. '=L $NAME' TO LOAD CONV FROM TXT. \n\
+'=S $NAME' TO SAVE CONV IN TXT. '=L $NAME' TO LOAD CONV FROM TXT, '=V' TO COPY LAST CODE BLOCK. \n\
 '=C' TO CLEAR CHAT (ONLY SEE LATEST RESPONSES). '=CC' TO UNCLEAR IT (BUGGY).\n\
-'=T $TEMP' TO SET GPT TEMPERATURE, '=!LONG' TO INSERT LONG MESSAGE. \n"
+'=T $TEMP' TO SET GPT TEMPERATURE, '=!LONG' TO INSERT LONG MESSAGE \n"
         print(man_string)
         input_colour("PRESS ENTER TO CONTINUE...",bcolors.BOLD)
 
@@ -308,6 +309,23 @@ TOKENS (LAST_MSG/MAX) = ({curr_tokens}/{MAX_TOKENS}). TOTAL TOKENS = {tokens} (~
                 else:
                     new_msg_arr.append(eval(line))
         return new_msg_arr
+    # given a string, it identifies a code block (denoted by a triple tick like this '''), and copies everything within it to clipboard.
+    def copy_code_to_clipboard(text):
+        def get_first_codeblock(text):
+            codeblock = re.search(r'```(.*?)```', text, re.DOTALL)
+            if codeblock:
+                return codeblock.group(1)
+            else:
+                return None
+
+        code_block_start = text.find("```")
+        code_block_end = text.rfind("```")
+        if code_block_start != -1 and code_block_end != -1:
+            codeblock = get_first_codeblock(text)
+            pyperclip.copy(codeblock)
+            print_colour("INFO:: CODE BLOCK COPIED TO CLIPBOARD.",bcolors.BOLD)
+        else:
+            print_colour("ERROR:: NO CODE BLOCK FOUND.",bcolors.FAIL)
 
     def graceful_exit_handler(tokens,msg_arr):
         name = "Recovered_CONVO.txt"
@@ -379,6 +397,15 @@ TOKENS (LAST_MSG/MAX) = ({curr_tokens}/{MAX_TOKENS}). TOTAL TOKENS = {tokens} (~
                 msg_arr.pop()
                 msg_arr.pop()
             continue
+        elif msg == "=V":
+            last_msg = msg_arr[-1]
+            if last_msg['role'] == 'user':
+                continue
+            else:
+                if dependancies['pyperclip']: 
+                    copy_code_to_clipboard(last_msg['content'])
+                    input("Press ENTER to continue...")
+                continue
         elif msg == "=R":
             if msg_arr[-1]["role"] == 'system':
                 msg_arr.pop()
